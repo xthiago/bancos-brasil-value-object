@@ -1,0 +1,9 @@
+.cache
+vendor
+composer.lock
+
+# jetbrains
+*.iml
+.idea
+
+docker-compose*.override.yml
