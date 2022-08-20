@@ -17,11 +17,11 @@
     }
   },
   "suggest": {
-    "doctrine/dbal": "To persist the Id instances into a relational database"
+    "doctrine/dbal": "Para salvar e recuperar instâncias de Banco a partir de um banco de dados relacional."
   },
   "autoload-dev": {
     "psr-4": {
-      "Xthiago\\ValueObject\\BancosBrasil\\": [
+      "Xthiago\\ValueObject\\BancosBrasil\\Tests\\": [
         "tests/integration/",
         "tests/unit/"
       ]

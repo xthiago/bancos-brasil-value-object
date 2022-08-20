@@ -1,23 +1,22 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Xthiago\ValueObject\BancosBrasil;
 
-use InvalidArgumentException;
-
-class ArrayFactory implements BancoFactory
+final class ArrayFactory implements BancoFactory
 {
     /**
-     * @param array<string, array{name: string}> $banksIndexedByCode $banksIndexedByCode
+     * @param array<array-key, array{name: string}> $banksIndexedByCode $banksIndexedByCode
      */
     public function __construct(
         private array $banksIndexedByCode,
     ) {
     }
 
-    public static function withDefaultConfiguration(): static
+    public static function withDefaultConfiguration(): self
     {
-        return new static(banksIndexedByCode: [
+        return new self(banksIndexedByCode: [
             // TODO: São só exemplos. Depois vou incluir um arquivo estático (e seu gerador) com todas opções.
             '001' => ['name' => 'Banco do Brasil S.A.'],
             '033' => ['name' => 'Banco Santander S.A'],
@@ -27,13 +26,15 @@ class ArrayFactory implements BancoFactory
         ]);
     }
 
-    /**
-     * @throws InvalidArgumentException se não existir banco com código informado.
-     */
+    /** {@inheritDoc} */
     public function fromString(string $bankCode): Banco
     {
+        if (empty($bankCode)) {
+            throw InvalidBankCode::forEmptyCode();
+        }
+
         if (! isset($this->banksIndexedByCode[$bankCode])) {
-            throw new InvalidArgumentException();
+            throw BankNotFound::forCode($bankCode);
         }
 
         return Banco::fromFactory(

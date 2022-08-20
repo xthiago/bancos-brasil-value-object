@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Xthiago\ValueObject\BancosBrasil;
@@ -6,6 +7,8 @@ namespace Xthiago\ValueObject\BancosBrasil;
 use InvalidArgumentException;
 use JsonSerializable;
 use Stringable;
+
+use function strlen;
 
 class Banco implements Stringable, JsonSerializable
 {
@@ -29,19 +32,31 @@ class Banco implements Stringable, JsonSerializable
         public readonly string $name,
     ) {
         if (strlen($code) === 0) {
-            throw new InvalidArgumentException('The given `$code` should not be empty.');
+            throw InvalidBankCode::forEmptyCode();
         }
     }
 
-    public static function fromString(string $bankCode): static
+    /**
+     * @param non-empty-string $bankCode
+     *
+     * @throws InvalidBankCode|BankNotFound ver BancoFactory.
+     */
+    public static function fromString(string $bankCode): self
     {
-        return static::getFactory()->fromString($bankCode);
+        return self::getFactory()->fromString($bankCode);
     }
 
-    public static function tryFromString(string $bankCode): ?static
+    /**
+     * Semelhante ao self::fromString(), mas retorna `null` ao invés de emitir BankNotFound.
+     *
+     * @param non-empty-string $bankCode
+     *
+     * @throws InvalidBankCode
+     */
+    public static function tryFromString(string $bankCode): ?self
     {
         try {
-            return static::getFactory()->fromString($bankCode);
+            return self::getFactory()->fromString($bankCode);
         } catch (InvalidArgumentException $exception) {
             return null;
         }
@@ -52,12 +67,15 @@ class Banco implements Stringable, JsonSerializable
      *
      * Ele deve ser usado apenas se você estiver criando sua própria Factory. Nesse caso as factories são responsáveis
      * por validar os dados (Ex: código `237` é do `Banco Bradesco S.A.` e não do `Banco do Brasil` (`001`).
+     *
+     * @param non-empty-string $code
      */
-    public static function fromFactory(string $code, string $name): static
+    public static function fromFactory(string $code, string $name): self
     {
-        return new static($code, $name);
+        return new self($code, $name);
     }
 
+    /** @return array{code: string, name: string} */
     public function jsonSerialize(): array
     {
         return [
@@ -68,7 +86,7 @@ class Banco implements Stringable, JsonSerializable
 
     public function __toString(): string
     {
-        return (string) $this->code;
+        return $this->code;
     }
 
     public function isEqualTo(Banco $banco): bool
@@ -78,26 +96,11 @@ class Banco implements Stringable, JsonSerializable
 
     public function equals(?object $other): bool
     {
-        if (!$other instanceof self) {
+        if (! $other instanceof self) {
             return false;
         }
 
-        return $this->compareTo($other) === 0;
-    }
-
-    public function compareTo(Banco $other): int
-    {
-        $compare = strcmp($this->code, $other->code);
-
-        if ($compare < 0) {
-            return -1;
-        }
-
-        if ($compare > 0) {
-            return 1;
-        }
-
-        return 0;
+        return $this->code === $other->code;
     }
 
     /**
@@ -114,9 +117,14 @@ class Banco implements Stringable, JsonSerializable
     public static function getFactory(): BancoFactory
     {
         if (self::$factory === null) {
-            self::setFactory(ArrayFactory::withDefaultConfiguration());
+            self::$factory = ArrayFactory::withDefaultConfiguration();
         }
 
         return self::$factory;
+    }
+
+    public static function resetFactory(): void
+    {
+        self::$factory = null;
     }
 }

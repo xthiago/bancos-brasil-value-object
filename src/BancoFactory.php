@@ -1,9 +1,8 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Xthiago\ValueObject\BancosBrasil;
-
-use InvalidArgumentException;
 
 /**
  * Fábrica responsável por criar as instâncias do objeto de valor Banco a partir da string fornecida (código).
@@ -14,7 +13,10 @@ use InvalidArgumentException;
 interface BancoFactory
 {
     /**
-     * @throws InvalidArgumentException se não existir banco com código informado.
+     * @param non-empty-string $bankCode
+     *
+     * @throws InvalidBankCode se o código possuir um formato inválido (ex: string vazia).
+     * @throws BankNotFound se não existir banco com código informado.
      */
     public function fromString(string $bankCode): Banco;
 }
