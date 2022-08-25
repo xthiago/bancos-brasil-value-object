@@ -8,23 +8,23 @@ use Exception;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 use Throwable;
-use Xthiago\ValueObject\BancosBrasil\ArrayFactory;
-use Xthiago\ValueObject\BancosBrasil\Banco;
-use Xthiago\ValueObject\BancosBrasil\BancoFactory;
-use Xthiago\ValueObject\BancosBrasil\BankNotFound;
-use Xthiago\ValueObject\BancosBrasil\InvalidBankCode;
+use Xthiago\ValueObject\BancosBrasil\FromArrayFactory;
+use Xthiago\ValueObject\BancosBrasil\InstituicaoFinanceira;
+use Xthiago\ValueObject\BancosBrasil\InstituicaoFinanceiraFactory;
+use Xthiago\ValueObject\BancosBrasil\BancoNaoEncontrado;
+use Xthiago\ValueObject\BancosBrasil\NumeroCodigoInvalido;
 
 use function is_string;
 use function json_encode;
 use function sprintf;
 
-class BancoTest extends TestCase
+class BankCodeTest extends TestCase
 {
     private const CODE_BANCO_NACIONAL = '998877';
     private const CODE_BANCO_BAMERINDUS = '665544';
     private const CODE_BANCO_INTERIOR = '332211';
 
-    private ?BancoFactory $factory;
+    private ?InstituicaoFinanceiraFactory $factory;
 
     /** @return array<array-key, array{name: string}> $banksIndexedByCode $banksIndexedByCode */
     private function fixtures(): array
@@ -38,128 +38,128 @@ class BancoTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->factory = new ArrayFactory($this->fixtures());
+        $this->factory = new FromArrayFactory($this->fixtures());
     }
 
     protected function tearDown(): void
     {
-        Banco::resetFactory();
+        InstituicaoFinanceira::resetFactory();
     }
 
     public function test_should_create_instances_using_default_factory(): void
     {
         $codeBancoBrasil = '001';
 
-        $resultOfFromString = Banco::fromString($codeBancoBrasil);
-        $resultOfTryFromString = Banco::tryFromString($codeBancoBrasil);
+        $resultOfFromString = InstituicaoFinanceira::fromString($codeBancoBrasil);
+        $resultOfTryFromString = InstituicaoFinanceira::tryFromString($codeBancoBrasil);
 
         self::assertTrue(
-            $resultOfFromString->isEqualTo(Banco::fromFactory(code: '001', name: 'Banco do Brasil S.A.'))
+            $resultOfFromString->isEqualTo(InstituicaoFinanceira::fromFactory(code: '001', name: 'Banco do Brasil S.A.'))
         );
-        self::assertSame('001', $resultOfFromString->code);
-        self::assertSame('Banco do Brasil S.A.', $resultOfFromString->name);
+        self::assertSame('001', $resultOfFromString->codigo);
+        self::assertSame('Banco do Brasil S.A.', $resultOfFromString->nome);
 
         self::assertTrue(
-            $resultOfTryFromString->isEqualTo(Banco::fromFactory(code: '001', name: 'Banco do Brasil S.A.'))
+            $resultOfTryFromString->isEqualTo(InstituicaoFinanceira::fromFactory(code: '001', name: 'Banco do Brasil S.A.'))
         );
-        self::assertSame('001', $resultOfTryFromString->code);
-        self::assertSame('Banco do Brasil S.A.', $resultOfTryFromString->name);
+        self::assertSame('001', $resultOfTryFromString->codigo);
+        self::assertSame('Banco do Brasil S.A.', $resultOfTryFromString->nome);
     }
 
     public function test_should_create_instances_using_another_factory(): void
     {
         $bankCode = self::CODE_BANCO_BAMERINDUS;
         try {
-            Banco::fromString($bankCode);
+            InstituicaoFinanceira::fromString($bankCode);
             self::fail(sprintf('Default factory should not have an entry for bank code "%s".', $bankCode));
         } catch (Throwable $exception) {
-            self::assertEquals(BankNotFound::forCode($bankCode), $exception);
+            self::assertEquals(BancoNaoEncontrado::comCodigoCompe($bankCode), $exception);
         }
 
-        self::assertNull(Banco::tryFromString($bankCode));
+        self::assertNull(InstituicaoFinanceira::tryFromString($bankCode));
 
-        Banco::setFactory($this->factory);
-        $resultFromString = Banco::fromString($bankCode);
-        $resultOfTryFromString = Banco::tryFromString($bankCode);
+        InstituicaoFinanceira::setFactory($this->factory);
+        $resultFromString = InstituicaoFinanceira::fromString($bankCode);
+        $resultOfTryFromString = InstituicaoFinanceira::tryFromString($bankCode);
 
         self::assertTrue(
             $resultFromString->isEqualTo(
-                Banco::fromFactory(code: $bankCode, name: 'Banco Mercantil e Industrial do Paraná S/A')
+                InstituicaoFinanceira::fromFactory(code: $bankCode, name: 'Banco Mercantil e Industrial do Paraná S/A')
             )
         );
-        self::assertSame($bankCode, $resultFromString->code);
-        self::assertSame('Banco Mercantil e Industrial do Paraná S/A', $resultFromString->name);
+        self::assertSame($bankCode, $resultFromString->codigo);
+        self::assertSame('Banco Mercantil e Industrial do Paraná S/A', $resultFromString->nome);
 
         self::assertTrue(
             $resultOfTryFromString->isEqualTo(
-                Banco::fromFactory(code: $bankCode, name: 'Banco Mercantil e Industrial do Paraná S/A')
+                InstituicaoFinanceira::fromFactory(code: $bankCode, name: 'Banco Mercantil e Industrial do Paraná S/A')
             )
         );
-        self::assertSame($bankCode, $resultOfTryFromString->code);
-        self::assertSame('Banco Mercantil e Industrial do Paraná S/A', $resultOfTryFromString->name);
+        self::assertSame($bankCode, $resultOfTryFromString->codigo);
+        self::assertSame('Banco Mercantil e Industrial do Paraná S/A', $resultOfTryFromString->nome);
     }
 
     public function test_fromString_should_throw_BankNotFound_when_bank_is_not_found(): void
     {
-        self::expectExceptionObject(BankNotFound::forCode('000'));
+        self::expectExceptionObject(BancoNaoEncontrado::comCodigoCompe('000'));
 
-        $inlineFactory = new class () implements BancoFactory {
-            public function fromString(string $bankCode): Banco
+        $inlineFactory = new class () implements InstituicaoFinanceiraFactory {
+            public function fromString(string $bankCode): InstituicaoFinanceira
             {
-                throw BankNotFound::forCode('000');
+                throw BancoNaoEncontrado::comCodigoCompe('000');
             }
         };
-        Banco::setFactory($inlineFactory);
-        Banco::fromString('000');
+        InstituicaoFinanceira::setFactory($inlineFactory);
+        InstituicaoFinanceira::fromString('000');
     }
 
     public function test_tryFromString_should_return_null_when_bank_is_not_found(): void
     {
-        $inlineFactory = new class () implements BancoFactory {
-            public function fromString(string $bankCode): Banco
+        $inlineFactory = new class () implements InstituicaoFinanceiraFactory {
+            public function fromString(string $bankCode): InstituicaoFinanceira
             {
-                throw BankNotFound::forCode('000');
+                throw BancoNaoEncontrado::comCodigoCompe('000');
             }
         };
-        Banco::setFactory($inlineFactory);
+        InstituicaoFinanceira::setFactory($inlineFactory);
 
-        self::assertNull(Banco::tryFromString('000'));
+        self::assertNull(InstituicaoFinanceira::tryFromString('000'));
     }
 
     public function test_fromString_should_not_catch_exception_thrown_by_factory(): void
     {
         self::expectExceptionObject(new Exception('Catch me if you can!'));
 
-        $inlineFactory = new class () implements BancoFactory {
-            public function fromString(string $bankCode): Banco
+        $inlineFactory = new class () implements InstituicaoFinanceiraFactory {
+            public function fromString(string $bankCode): InstituicaoFinanceira
             {
                 throw new Exception('Catch me if you can!');
             }
         };
-        Banco::setFactory($inlineFactory);
-        Banco::fromString('000');
+        InstituicaoFinanceira::setFactory($inlineFactory);
+        InstituicaoFinanceira::fromString('000');
     }
 
     public function test_tryFromString_should_not_catch_non_BankNotFound_exceptions_thrown_by_factory(): void
     {
         self::expectExceptionObject(new Exception('Catch me if you can!'));
 
-        $inlineFactory = new class () implements BancoFactory {
-            public function fromString(string $bankCode): Banco
+        $inlineFactory = new class () implements InstituicaoFinanceiraFactory {
+            public function fromString(string $bankCode): InstituicaoFinanceira
             {
                 throw new Exception('Catch me if you can!');
             }
         };
-        Banco::setFactory($inlineFactory);
-        Banco::tryFromString('000');
+        InstituicaoFinanceira::setFactory($inlineFactory);
+        InstituicaoFinanceira::tryFromString('000');
     }
 
     public function test_fromFactory_should_throw_InvalidBankCode_when_empty_code_is_given(): void
     {
-        self::expectExceptionObject(InvalidBankCode::forEmptyCode());
+        self::expectExceptionObject(NumeroCodigoInvalido::paraStringVazia());
         $emptyCode = '';
 
-        Banco::fromFactory(
+        InstituicaoFinanceira::fromFactory(
             code: $emptyCode,
             name: 'Xablau'
         );
@@ -167,9 +167,9 @@ class BancoTest extends TestCase
 
     public function test_it_should_be_serializable(): void
     {
-        Banco::setFactory($this->factory);
+        InstituicaoFinanceira::setFactory($this->factory);
 
-        $bank = Banco::fromString(self::CODE_BANCO_INTERIOR);
+        $bank = InstituicaoFinanceira::fromString(self::CODE_BANCO_INTERIOR);
 
         // Stringable interface:
         self::assertSame(self::CODE_BANCO_INTERIOR, $bank->__toString());
@@ -197,9 +197,9 @@ JSON;
     /** @dataProvider isEqualToProvider */
     public function test_isEqualTo(string $firstCode, string $secondCode, bool $isEqual): void
     {
-        Banco::setFactory($this->factory);
-        $firstBank = Banco::fromString($firstCode);
-        $secondBank = Banco::fromString($secondCode);
+        InstituicaoFinanceira::setFactory($this->factory);
+        $firstBank = InstituicaoFinanceira::fromString($firstCode);
+        $secondBank = InstituicaoFinanceira::fromString($secondCode);
 
         self::assertSame($isEqual, $firstBank->isEqualTo($secondBank));
     }
@@ -247,10 +247,10 @@ JSON;
         string|object $other,
         bool $isEqual
     ): void {
-        Banco::setFactory($this->factory);
+        InstituicaoFinanceira::setFactory($this->factory);
 
-        $aBank = Banco::fromString($bank);
-        $otherBank = is_string($other) ? Banco::fromString($other) : $other;
+        $aBank = InstituicaoFinanceira::fromString($bank);
+        $otherBank = is_string($other) ? InstituicaoFinanceira::fromString($other) : $other;
 
         self::assertSame($isEqual, $aBank->equals($otherBank));
     }
